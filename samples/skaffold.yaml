@@ -1,0 +1,19 @@
+apiVersion: skaffold/v1
+kind: Config
+metadata:
+  name: my-app
+build:
+  local:
+    push: true
+  artifacts:
+  - image: container-registry.io/my-app
+deploy:
+  kubectl:
+    manifests:
+    - ../k8s/test/my-app.yaml
+profiles:
+  - name: live
+    deploy:
+      kubectl:
+        manifests:
+        - ../k8s/live/my-app.yaml

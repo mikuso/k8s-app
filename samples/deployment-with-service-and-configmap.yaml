@@ -1,0 +1,100 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-app
+  namespace: default
+  labels:
+    app: my-app
+spec:
+  type: ClusterIP
+  selector:
+    app: my-app
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-app-config
+  namespace: default
+  labels:
+    app: my-app
+data:
+  config.yaml: |-
+    database:
+      host: mariadb.default.svc.cluster.local
+      port: 3306
+      user: myusername
+      password: mypassword
+      database: test
+      connectionLimit: 10
+      timezone: Z
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+  namespace: default
+  labels:
+    app: my-app
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  progressDeadlineSeconds: 120
+  selector:
+    matchLabels:
+      app: my-app
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+
+      - name: my-app
+        image: container-registry.io/my-app
+        imagePullPolicy: IfNotPresent
+
+        volumeMounts:
+        - name: conf
+          mountPath: /etc/conf
+
+        env:
+        - name: TZ
+          value: UTC
+        - name: CONFIG_PATH
+          value: /etc/conf/config.yaml
+
+        livenessProbe:
+          initialDelaySeconds: 15
+          timeoutSeconds: 5
+          periodSeconds: 10
+          httpGet:
+            path: /liveness
+            port: 8066
+
+        readinessProbe:
+          periodSeconds: 10
+          timeoutSeconds: 5
+          httpGet:
+            path: /readiness
+            port: 8066
+
+        resources:
+          requests:
+            cpu: 1m
+
+      volumes:
+      - name: conf
+        configMap:
+          name: my-app-config
