@@ -9,6 +9,8 @@ class K8SApp {
         this.configPath = options.configPath;
         this.logger = options.logger || console.error.bind(console);
         this.probeServerPort = options.probeServerPort || 8066;
+        this.maxStartupMs = options.maxStartupMs == null ? 1000*60 : options.maxStartupMs;
+        this.maxShutdownMs = options.maxShutdownMs == null ? 1000*30 : options.maxShutdownMs;
 
         this.config = {};
         this.locals = {};
@@ -110,11 +112,15 @@ class K8SApp {
             }
 
             await this.stopProbeServer();
-            await this.shutdown({
+            const shutdown = this.shutdown({
                 config: this.config,
                 locals: this.locals,
                 error: err,
             });
+            await Promise.race([
+                startup,
+                this.timeout(this.maxShutdownMs, `Shutdown time exceeds maxShutdownMs (${this.maxShutdownMs})`),
+            ]);
 
         } catch (err) {
             this.logger(`Error during shutdown:`, err);
@@ -131,16 +137,24 @@ class K8SApp {
             await this.loadConfig();
 
             await this.startProbeServer();
-            await this.startup({
+            const startup = this.startup({
                 config: this.config,
                 locals: this.locals,
                 exitHandler: this.boundExit,
             });
+            await Promise.race([
+                startup,
+                this.timeout(this.maxStartupMs, `Startup time exceeds maxStartupMs (${this.maxStartupMs})`),
+            ]);
 
             this.isReady = true;
         } catch (err) {
             this.exit(err);
         }
+    }
+
+    async timeout(ms, msg) {
+        return new Promise((res, rej) => setTimeout(() => rej(msg || "Timeout", ms)));
     }
 }
 
