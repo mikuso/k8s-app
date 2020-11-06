@@ -118,7 +118,7 @@ class K8SApp {
                 error: err,
             });
             await Promise.race([
-                shutdown,
+                startup,
                 this.timeout(this.maxShutdownMs, `Shutdown time exceeds maxShutdownMs (${this.maxShutdownMs})`),
             ]);
 
