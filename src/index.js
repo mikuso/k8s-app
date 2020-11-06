@@ -154,7 +154,7 @@ class K8SApp {
     }
 
     async timeout(ms, msg) {
-        return new Promise((res, rej) => setTimeout(() => rej(msg || "Timeout", ms)));
+        return new Promise((res, rej) => setTimeout(() => rej(msg || "Timeout"), ms));
     }
 }
 
