@@ -1,6 +1,7 @@
 const fs = require('fs');
 const http = require('http');
 const YAML = require('yaml');
+const {createHttpTerminator} = require('http-terminator');
 
 class K8SApp {
     constructor(options) {
@@ -55,6 +56,11 @@ class K8SApp {
 
     async startProbeServer() {
         this.probeServer = http.createServer();
+        this.probeServerTerminator = createHttpTerminator({
+            server: this.probeServer,
+            gracefulTerminationTimeout: 0
+        });
+
         this.probeServer.on('request', async (req, res) => {
             const probeType = req.url.substring(1);
 
@@ -88,9 +94,8 @@ class K8SApp {
     }
 
     async stopProbeServer() {
-        if (this.probeServer && this.probeServer.listening) {
-            this.probeServer.close();
-            this.probeServer = null;
+        if (this.probeServerTerminator) {
+            await this.probeServerTerminator.terminate();
         }
     }
 

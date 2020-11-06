@@ -18,6 +18,7 @@
   "homepage": "https://github.com/mikuso/k8s-app#readme",
   "keywords": [],
   "dependencies": {
+    "http-terminator": "^2.0.3",
     "yaml": "^1.10.0"
   }
 }
