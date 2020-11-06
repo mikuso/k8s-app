@@ -101,6 +101,8 @@ class K8SApp {
             }
 
             this.isExiting = true;
+            process.off('unhandledRejection', this.boundExit);
+            process.off('uncaughtException', this.boundExit);
             process.off('SIGINT', this.boundExit);
             process.off('SIGTERM', this.boundExit);
 
@@ -124,6 +126,8 @@ class K8SApp {
 
     async run() {
         try {
+            process.on('unhandledRejection', this.boundExit);
+            process.on('uncaughtException', this.boundExit);
             process.on('SIGINT', this.boundExit);
             process.on('SIGTERM', this.boundExit);
 
