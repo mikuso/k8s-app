@@ -3,13 +3,30 @@ const http = require('http');
 const YAML = require('yaml');
 const {createHttpTerminator} = require('http-terminator');
 
+/**
+ * Environment variables supported:
+ * 
+ * PROBE_SERVER_PORT - set the listen port for the http probe
+ * POD_NAME - pass the pod's name (useful for statefulsets to determine pod number)
+ */
+
 class K8SApp {
     constructor(options) {
         if (!options) options = {};
 
         this.configPath = options.configPath;
         this.logger = options.logger || console.error.bind(console);
-        this.probeServerPort = options.probeServerPort || 8066;
+        this.probeServerPort = options.probeServerPort || process.env.PROBE_SERVER_PORT || 8066;
+
+        const podName = options.podName || process.env.POD_NAME || 'app-0';
+        const ordinalMatch = podName.match(/\-(\d+)$/);
+        this.podOrdinal = 0;
+        if (ordinalMatch) {
+            this.podOrdinal = +ordinalMatch[1];
+        }
+        if (Number.isNaN(this.podOrdinal)) {
+            this.podOrdinal = 0;
+        }
 
         this.config = {};
         this.locals = {};
@@ -77,6 +94,7 @@ class K8SApp {
                     config: this.config,
                     locals: this.locals,
                     probeType, // 'liveness' or 'readiness'
+                    podOrdinal: this.podOrdinal,
                 });
 
             } catch (err) {
@@ -86,6 +104,7 @@ class K8SApp {
 
             res.end();
         });
+
         await new Promise((resolve, reject) => {
             this.probeServer.listen(this.probeServerPort, err => {
                 err ? reject(err) : resolve();
@@ -121,6 +140,7 @@ class K8SApp {
                 config: this.config,
                 locals: this.locals,
                 error: err,
+                podOrdinal: this.podOrdinal,
             });
 
         } catch (err) {
@@ -139,11 +159,20 @@ class K8SApp {
             this.isReady = false;
             await this.loadConfig();
 
-            await this.startProbeServer();
+            try {
+                await this.startProbeServer();
+            } catch (err) {
+                if (err.code === 'EADDRINUSE') {
+                    console.error('Try setting env var PROBE_SERVER_PORT to a different number');
+                }
+                throw err;
+            }
+
             await this.startup({
                 config: this.config,
                 locals: this.locals,
                 exitHandler: this.boundExit,
+                podOrdinal: this.podOrdinal,
             });
 
             this.isReady = true;
