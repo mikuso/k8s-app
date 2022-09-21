@@ -18,8 +18,8 @@ class K8SApp {
         this.logger = options.logger || console.error.bind(console);
         this.probeServerPort = options.probeServerPort || process.env.PROBE_SERVER_PORT || 8066;
 
-        const podName = options.podName || process.env.POD_NAME || 'app-0';
-        const ordinalMatch = podName.match(/\-(\d+)$/);
+        this.podName = options.podName || process.env.POD_NAME || 'app-0';
+        const ordinalMatch = this.podName.match(/\-(\d+)$/);
         this.podOrdinal = 0;
         if (ordinalMatch) {
             this.podOrdinal = +ordinalMatch[1];
@@ -95,6 +95,7 @@ class K8SApp {
                     locals: this.locals,
                     probeType, // 'liveness' or 'readiness'
                     podOrdinal: this.podOrdinal,
+                    podName: this.podName,
                 });
 
             } catch (err) {
@@ -141,6 +142,7 @@ class K8SApp {
                 locals: this.locals,
                 error: err,
                 podOrdinal: this.podOrdinal,
+                podName: this.podName,
             });
 
         } catch (err) {
@@ -173,6 +175,7 @@ class K8SApp {
                 locals: this.locals,
                 exitHandler: this.boundExit,
                 podOrdinal: this.podOrdinal,
+                podName: this.podName,
             });
 
             this.isReady = true;
